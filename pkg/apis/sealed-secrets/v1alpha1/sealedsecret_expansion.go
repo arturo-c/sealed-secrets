@@ -254,6 +254,11 @@ func (s *SealedSecret) Unseal(codecs runtimeserializer.CodecFactory, privKeys ma
 		secret.Type = s.Spec.Template.Type
 
 		secret.Data = map[string][]byte{}
+
+		var (
+			badKeys        []string
+			unsealingError error
+		)
 		for key, value := range s.Spec.EncryptedData {
 			valueBytes, err := base64.StdEncoding.DecodeString(value)
 			if err != nil {
@@ -261,11 +266,15 @@ func (s *SealedSecret) Unseal(codecs runtimeserializer.CodecFactory, privKeys ma
 			}
 			plaintext, err := crypto.HybridDecrypt(rand.Reader, privKeys, valueBytes, label)
 			if err != nil {
-				return nil, err
+				badKeys = append(badKeys, key)
+				unsealingError = err
 			}
 			secret.Data[key] = plaintext
 		}
 
+		if unsealingError != nil {
+			return nil, fmt.Errorf("%v (affected encrypted data items: %q)", unsealingError, badKeys)
+		}
 	} else if AcceptDeprecatedV1Data { // Support decrypting old secrets for backward compatibility
 		plaintext, err := crypto.HybridDecrypt(rand.Reader, privKeys, s.Spec.Data, label)
 		if err != nil {
