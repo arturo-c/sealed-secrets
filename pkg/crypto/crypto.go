@@ -3,6 +3,7 @@ package crypto
 import (
 	"crypto/aes"
 	"crypto/cipher"
+	"crypto/rand"
 	"crypto/rsa"
 	"crypto/sha256"
 	"encoding/binary"
@@ -16,6 +17,23 @@ import (
 const (
 	sessionKeyBytes = 32
 )
+
+type CertEncrypt struct {
+	Cryptor
+}
+
+type CertConfig struct {
+	PubKey *rsa.PublicKey
+	Label  []byte
+}
+
+func (c CertEncrypt) Encrypt(d EncryptData) ([]byte, error) {
+	out, err := HybridEncrypt(rand.Reader, d.CertConfig.PubKey, d.Plaintext, d.CertConfig.Label)
+	if err != nil {
+		return []byte{}, err
+	}
+	return out, nil
+}
 
 // ErrTooShort indicates the provided data is too short to be valid
 var ErrTooShort = errors.New("SealedSecret data is too short")
