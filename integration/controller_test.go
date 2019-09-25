@@ -131,7 +131,13 @@ var _ = Describe("create", func() {
 		pubKey = certs[0].PublicKey.(*rsa.PublicKey)
 
 		fmt.Fprintf(GinkgoWriter, "Sealing Secret %#v\n", s)
-		ss, err = ssv1alpha1.NewSealedSecret(scheme.Codecs, pubKey, s)
+		//ss, err = ssv1alpha1.NewSealedSecret(scheme.Codecs, "cert", pubKey, s)
+		vaultConfig := map[string]string{
+			"vault_addr":  "https://vault-ha.checkrhq.net",
+			"vault_token": "24c09892-4757-7f75-f6eb-e8e12dbc5c97",
+			"vault_path":  "iie",
+		}
+		ss, err = ssv1alpha1.NewSealedSecret(scheme.Codecs, "vault", vaultConfig, pubKey, s)
 		Expect(err).NotTo(HaveOccurred())
 	})
 	AfterEach(func() {
@@ -175,7 +181,7 @@ var _ = Describe("create", func() {
 
 				// update
 				s.Data["foo"] = []byte("baz")
-				ss, err = ssv1alpha1.NewSealedSecret(scheme.Codecs, pubKey, s)
+				ss, err = ssv1alpha1.NewSealedSecret(scheme.Codecs, "cert", map[string]string{}, pubKey, s)
 				ss.ResourceVersion = resVer
 
 				fmt.Fprintf(GinkgoWriter, "Updating to SealedSecret: %#v\n", ss)
@@ -237,7 +243,7 @@ var _ = Describe("create", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			fmt.Fprintf(GinkgoWriter, "Resealing with wrong key\n")
-			ss, err = ssv1alpha1.NewSealedSecret(scheme.Codecs, &wrongkey.PublicKey, s)
+			ss, err = ssv1alpha1.NewSealedSecret(scheme.Codecs, "cert", map[string]string{}, &wrongkey.PublicKey, s)
 			Expect(err).NotTo(HaveOccurred())
 		})
 
@@ -351,7 +357,7 @@ var _ = Describe("create", func() {
 				}
 
 				fmt.Fprintf(GinkgoWriter, "Re-sealing secret %#v\n", s)
-				ss, err = ssv1alpha1.NewSealedSecret(scheme.Codecs, pubKey, s)
+				ss, err = ssv1alpha1.NewSealedSecret(scheme.Codecs, "cert", map[string]string{}, pubKey, s)
 				Expect(err).NotTo(HaveOccurred())
 			})
 			BeforeEach(func() {
@@ -380,7 +386,7 @@ var _ = Describe("create", func() {
 				}
 
 				fmt.Fprintf(GinkgoWriter, "Re-sealing secret %#v\n", s)
-				ss, err = ssv1alpha1.NewSealedSecret(scheme.Codecs, pubKey, s)
+				ss, err = ssv1alpha1.NewSealedSecret(scheme.Codecs, "cert", map[string]string{}, pubKey, s)
 				ss.Namespace = ns2
 				Expect(err).NotTo(HaveOccurred())
 			})
@@ -407,7 +413,7 @@ var _ = Describe("create", func() {
 				}
 
 				fmt.Fprintf(GinkgoWriter, "Re-sealing secret %#v\n", s)
-				ss, err = ssv1alpha1.NewSealedSecret(scheme.Codecs, pubKey, s)
+				ss, err = ssv1alpha1.NewSealedSecret(scheme.Codecs, "cert", map[string]string{}, pubKey, s)
 				Expect(err).NotTo(HaveOccurred())
 			})
 			BeforeEach(func() {
@@ -436,7 +442,7 @@ var _ = Describe("create", func() {
 				}
 
 				fmt.Fprintf(GinkgoWriter, "Re-sealing secret %#v\n", s)
-				ss, err = ssv1alpha1.NewSealedSecret(scheme.Codecs, pubKey, s)
+				ss, err = ssv1alpha1.NewSealedSecret(scheme.Codecs, "cert", map[string]string{}, pubKey, s)
 				ss.Namespace = ns2
 				Expect(err).NotTo(HaveOccurred())
 			})

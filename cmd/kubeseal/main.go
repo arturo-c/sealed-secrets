@@ -223,7 +223,8 @@ func seal(in io.Reader, out io.Writer, codecs runtimeserializer.CodecFactory, pu
 	secret.SetDeletionTimestamp(nil)
 	secret.DeletionGracePeriodSeconds = nil
 
-	ssecret, err := ssv1alpha1.NewSealedSecret(codecs, pubKey, secret)
+	cconfig := map[string]string{}
+	ssecret, err := ssv1alpha1.NewSealedSecret(codecs, "cert", cconfig, pubKey, secret)
 	if err != nil {
 		return err
 	}

@@ -6,6 +6,7 @@ import (
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/sha256"
+	"encoding/base64"
 	"encoding/binary"
 	"errors"
 	"fmt"
@@ -18,21 +19,26 @@ const (
 	sessionKeyBytes = 32
 )
 
-type CertEncrypt struct {
+type Cert struct {
 	Cryptor
+	PubKey      *rsa.PublicKey
+	Label       []byte
+	PrivateKeys map[string]*rsa.PrivateKey
 }
 
 type CertConfig struct {
-	PubKey *rsa.PublicKey
-	Label  []byte
 }
 
-func (c CertEncrypt) Encrypt(d EncryptData) ([]byte, error) {
-	out, err := HybridEncrypt(rand.Reader, d.CertConfig.PubKey, d.Plaintext, d.CertConfig.Label)
+func (c Cert) Encrypt(d []byte) (string, error) {
+	out, err := HybridEncrypt(rand.Reader, c.PubKey, d, c.Label)
 	if err != nil {
-		return []byte{}, err
+		return "", err
 	}
-	return out, nil
+	return base64.StdEncoding.EncodeToString(out), nil
+}
+
+func (c Cert) Decrypt(e []byte) ([]byte, error) {
+	return HybridDecrypt(rand.Reader, c.PrivateKeys, e, c.Label)
 }
 
 // ErrTooShort indicates the provided data is too short to be valid

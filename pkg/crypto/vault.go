@@ -5,33 +5,47 @@ import (
 
 	log "github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/vault/sdk/helper/logging"
+	"github.com/hashicorp/vault/sdk/physical"
 	"github.com/hashicorp/vault/vault/seal/transit"
 )
 
-type VaultEncrypt struct {
+type Vault struct {
 	Cryptor
-}
-
-type VaultConfig struct {
 	Address   string
 	Token     string
 	KeyName   string
 	MountPath string
 }
 
-func (c VaultEncrypt) Encrypt(d EncryptData) ([]byte, error) {
+func (c Vault) Encrypt(d []byte) (string, error) {
 	s := transit.NewSeal(logging.NewVaultLogger(log.Trace))
 	config := map[string]string{
-		"address":    d.VaultConfig.Address,
-		"key_name":   d.VaultConfig.KeyName,
-		"token":      d.VaultConfig.Token,
-		"mount_path": d.VaultConfig.MountPath,
+		"address":    c.Address,
+		"key_name":   c.KeyName,
+		"token":      c.Token,
+		"mount_path": c.MountPath,
 	}
 	s.SetConfig(config)
 
-	swi, err := s.Encrypt(context.Background(), d.Plaintext)
+	swi, err := s.Encrypt(context.Background(), d)
 	if err != nil {
-		return []byte{}, err
+		return "", err
 	}
-	return swi.Ciphertext, nil
+	return string(swi.GetCiphertext()), nil
+}
+
+func (c Vault) Decrypt(e []byte) ([]byte, error) {
+	s := transit.NewSeal(logging.NewVaultLogger(log.Trace))
+	config := map[string]string{
+		"address":    c.Address,
+		"key_name":   c.KeyName,
+		"token":      c.Token,
+		"mount_path": c.MountPath,
+	}
+	s.SetConfig(config)
+
+	data := &physical.EncryptedBlobInfo{
+		Ciphertext: e,
+	}
+	return s.Decrypt(context.Background(), data)
 }
