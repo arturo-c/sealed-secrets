@@ -17,7 +17,7 @@ type Vault struct {
 	MountPath string
 }
 
-func (c Vault) Encrypt(d []byte) (string, error) {
+func (c Vault) Encrypt(d []byte) ([]byte, error) {
 	s := transit.NewSeal(logging.NewVaultLogger(log.Trace))
 	config := map[string]string{
 		"address":    c.Address,
@@ -29,9 +29,9 @@ func (c Vault) Encrypt(d []byte) (string, error) {
 
 	swi, err := s.Encrypt(context.Background(), d)
 	if err != nil {
-		return "", err
+		return []byte{}, err
 	}
-	return string(swi.GetCiphertext()), nil
+	return swi.GetCiphertext(), nil
 }
 
 func (c Vault) Decrypt(e []byte) ([]byte, error) {

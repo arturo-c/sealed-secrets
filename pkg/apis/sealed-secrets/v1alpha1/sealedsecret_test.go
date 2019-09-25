@@ -253,12 +253,54 @@ func TestSealRoundTrip(t *testing.T) {
 		},
 	}
 
-	ssecret, err := NewSealedSecret(codecs, "cert", &key.PublicKey, &secret)
+	ssecret, err := NewSealedSecret(codecs, "cert", map[string]string{}, &key.PublicKey, &secret)
 	if err != nil {
 		t.Fatalf("NewSealedSecret returned error: %v", err)
 	}
 
-	secret2, err := ssecret.Unseal(codecs, keys)
+	secret2, err := ssecret.Unseal(codecs, "cert", map[string]string{}, keys)
+	if err != nil {
+		t.Fatalf("Unseal returned error: %v", err)
+	}
+
+	if !reflect.DeepEqual(secret.Data, secret2.Data) {
+		t.Errorf("Unsealed secret != original secret: %v != %v", secret, secret2)
+	}
+}
+
+func TestSealRoundTripVault(t *testing.T) {
+	scheme := runtime.NewScheme()
+	codecs := serializer.NewCodecFactory(scheme)
+
+	SchemeBuilder.AddToScheme(scheme)
+	v1.SchemeBuilder.AddToScheme(scheme)
+
+	key, keys := generateTestKey(t, testRand(), 2048)
+
+	secret := v1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "myname",
+			Namespace: "myns",
+			Annotations: map[string]string{
+				"encryption-type": "vault",
+			},
+		},
+		Data: map[string][]byte{
+			"foo": []byte("bar"),
+		},
+	}
+
+	vaultConfig := map[string]string{
+		"vault_addr":  "http://localhost:8200",
+		"vault_token": "s.dfoyA0hqHEaHltpETrmwfn7k",
+		"vault_path":  "iie",
+	}
+	ssecret, err := NewSealedSecret(codecs, "vault", vaultConfig, &key.PublicKey, &secret)
+	if err != nil {
+		t.Fatalf("NewSealedSecret returned error: %v", err)
+	}
+
+	secret2, err := ssecret.Unseal(codecs, "vault", vaultConfig, keys)
 	if err != nil {
 		t.Fatalf("Unseal returned error: %v", err)
 	}
@@ -302,12 +344,12 @@ func TestSealRoundTripStringDataConversion(t *testing.T) {
 		},
 	}
 
-	ssecret, err := NewSealedSecret(codecs, "cert", &key.PublicKey, &secret)
+	ssecret, err := NewSealedSecret(codecs, "cert", map[string]string{}, &key.PublicKey, &secret)
 	if err != nil {
 		t.Fatalf("NewSealedSecret returned error: %v", err)
 	}
 
-	secret2, err := ssecret.Unseal(codecs, keys)
+	secret2, err := ssecret.Unseal(codecs, "cert", map[string]string{}, keys)
 	if err != nil {
 		t.Fatalf("Unseal returned error: %v", err)
 	}
@@ -339,12 +381,12 @@ func TestSealRoundTripWithClusterWide(t *testing.T) {
 		},
 	}
 
-	ssecret, err := NewSealedSecret(codecs, "cert", &key.PublicKey, &secret)
+	ssecret, err := NewSealedSecret(codecs, "cert", map[string]string{}, &key.PublicKey, &secret)
 	if err != nil {
 		t.Fatalf("NewSealedSecret returned error: %v", err)
 	}
 
-	secret2, err := ssecret.Unseal(codecs, keys)
+	secret2, err := ssecret.Unseal(codecs, "cert", map[string]string{}, keys)
 	if err != nil {
 		t.Fatalf("Unseal returned error: %v", err)
 	}
@@ -376,14 +418,14 @@ func TestSealRoundTripWithMisMatchClusterWide(t *testing.T) {
 		},
 	}
 
-	ssecret, err := NewSealedSecret(codecs, "cert", &key.PublicKey, &secret)
+	ssecret, err := NewSealedSecret(codecs, "cert", map[string]string{}, &key.PublicKey, &secret)
 	if err != nil {
 		t.Fatalf("NewSealedSecret returned error: %v", err)
 	}
 
 	ssecret.ObjectMeta.Annotations[SealedSecretClusterWideAnnotation] = "false"
 
-	_, err = ssecret.Unseal(codecs, keys)
+	_, err = ssecret.Unseal(codecs, "cert", map[string]string{}, keys)
 	if err == nil {
 		t.Fatalf("Unseal did not return expected error: %v", err)
 	}
@@ -411,12 +453,12 @@ func TestSealRoundTripWithNamespaceWide(t *testing.T) {
 		},
 	}
 
-	ssecret, err := NewSealedSecret(codecs, "cert", &key.PublicKey, &secret)
+	ssecret, err := NewSealedSecret(codecs, "cert", map[string]string{}, &key.PublicKey, &secret)
 	if err != nil {
 		t.Fatalf("NewSealedSecret returned error: %v", err)
 	}
 
-	secret2, err := ssecret.Unseal(codecs, keys)
+	secret2, err := ssecret.Unseal(codecs, "cert", map[string]string{}, keys)
 	if err != nil {
 		t.Fatalf("Unseal returned error: %v", err)
 	}
@@ -448,14 +490,14 @@ func TestSealRoundTripWithMisMatchNamespaceWide(t *testing.T) {
 		},
 	}
 
-	ssecret, err := NewSealedSecret(codecs, "cert", &key.PublicKey, &secret)
+	ssecret, err := NewSealedSecret(codecs, "cert", map[string]string{}, &key.PublicKey, &secret)
 	if err != nil {
 		t.Fatalf("NewSealedSecret returned error: %v", err)
 	}
 
 	ssecret.ObjectMeta.Annotations[SealedSecretNamespaceWideAnnotation] = "false"
 
-	_, err = ssecret.Unseal(codecs, keys)
+	_, err = ssecret.Unseal(codecs, "cert", map[string]string{}, keys)
 	if err == nil {
 		t.Fatalf("Unseal did not return expected error: %v", err)
 	}
@@ -499,7 +541,7 @@ func TestSealMetadataPreservation(t *testing.T) {
 			},
 		}
 
-		ssecret, err := NewSealedSecret(codecs, "cert", &key.PublicKey, &secret)
+		ssecret, err := NewSealedSecret(codecs, "cert", map[string]string{}, &key.PublicKey, &secret)
 		if err != nil {
 			t.Fatalf("NewSealedSecret returned error: %v", err)
 		}
@@ -561,7 +603,7 @@ func testUnsealingV1Format(t *testing.T, acceptDeprecated bool) {
 	if err != nil {
 		t.Fatalf("cannot compute fingerprint: %v", err)
 	}
-	secret2, err := ssecret.Unseal(codecs, map[string]*rsa.PrivateKey{fp: key})
+	secret2, err := ssecret.Unseal(codecs, "cert", map[string]string{}, map[string]*rsa.PrivateKey{fp: key})
 	if acceptDeprecated {
 		if err != nil {
 			t.Fatalf("Unseal returned error: %v", err)

@@ -185,6 +185,9 @@ func NewSealedSecret(codecs runtimeserializer.CodecFactory, cryptoType string, c
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      secret.GetName(),
 			Namespace: secret.GetNamespace(),
+			Annotations: map[string]string{
+				"encryption-type": cryptoType,
+			},
 		},
 		Spec: SealedSecretSpec{
 			Template: SecretTemplateSpec{
@@ -232,7 +235,7 @@ func NewSealedSecret(codecs runtimeserializer.CodecFactory, cryptoType string, c
 		if err != nil {
 			return nil, err
 		}
-		s.Spec.EncryptedData[key] = ciphertext
+		s.Spec.EncryptedData[key] = base64.StdEncoding.EncodeToString(ciphertext)
 	}
 
 	for key, value := range secret.StringData {
@@ -240,7 +243,7 @@ func NewSealedSecret(codecs runtimeserializer.CodecFactory, cryptoType string, c
 		if err != nil {
 			return nil, err
 		}
-		s.Spec.EncryptedData[key] = ciphertext
+		s.Spec.EncryptedData[key] = base64.StdEncoding.EncodeToString(ciphertext)
 	}
 
 	if clusterWide {

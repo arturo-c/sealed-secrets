@@ -6,7 +6,6 @@ import (
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/sha256"
-	"encoding/base64"
 	"encoding/binary"
 	"errors"
 	"fmt"
@@ -29,12 +28,8 @@ type Cert struct {
 type CertConfig struct {
 }
 
-func (c Cert) Encrypt(d []byte) (string, error) {
-	out, err := HybridEncrypt(rand.Reader, c.PubKey, d, c.Label)
-	if err != nil {
-		return "", err
-	}
-	return base64.StdEncoding.EncodeToString(out), nil
+func (c Cert) Encrypt(d []byte) ([]byte, error) {
+	return HybridEncrypt(rand.Reader, c.PubKey, d, c.Label)
 }
 
 func (c Cert) Decrypt(e []byte) ([]byte, error) {

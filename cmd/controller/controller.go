@@ -375,8 +375,8 @@ func attemptUnseal(ss *ssv1alpha1.SealedSecret, keyRegistry *KeyRegistry) (*core
 	encConfig := map[string]string{}
 	if annotations["encryption-type"] == "vault" {
 		encType = "vault"
-		encConfig["vault_addr"] = ""
-		encConfig["vault_token"] = ""
+		encConfig["vault_addr"] = "http://vault.vault:8200"
+		encConfig["vault_token"] = "s.dfoyA0hqHEaHltpETrmwfn7k"
 		encConfig["vault_path"] = "iie"
 	}
 	privateKeys := map[string]*rsa.PrivateKey{}

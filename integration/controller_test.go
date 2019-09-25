@@ -133,8 +133,8 @@ var _ = Describe("create", func() {
 		fmt.Fprintf(GinkgoWriter, "Sealing Secret %#v\n", s)
 		//ss, err = ssv1alpha1.NewSealedSecret(scheme.Codecs, "cert", pubKey, s)
 		vaultConfig := map[string]string{
-			"vault_addr":  "https://vault-ha.checkrhq.net",
-			"vault_token": "24c09892-4757-7f75-f6eb-e8e12dbc5c97",
+			"vault_addr":  "http://localhost:8200",
+			"vault_token": "s.dfoyA0hqHEaHltpETrmwfn7k",
 			"vault_path":  "iie",
 		}
 		ss, err = ssv1alpha1.NewSealedSecret(scheme.Codecs, "vault", vaultConfig, pubKey, s)
