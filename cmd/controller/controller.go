@@ -350,8 +350,7 @@ func (c *Controller) Rotate(content []byte) ([]byte, error) {
 			return nil, fmt.Errorf("Error decrypting secret. %v", err)
 		}
 		latestPrivKey := c.keyRegistry.latestPrivateKey()
-		cconfig := map[string]string{}
-		resealedSecret, err := ssv1alpha1.NewSealedSecret(scheme.Codecs, "cert", cconfig, &latestPrivKey.PublicKey, secret)
+		resealedSecret, err := ssv1alpha1.NewSealedSecret(scheme.Codecs, "cert", &latestPrivKey.PublicKey, secret)
 		if err != nil {
 			return nil, fmt.Errorf("Error creating new sealed secret. %v", err)
 		}
@@ -372,16 +371,12 @@ func (c *Controller) attemptUnseal(ss *ssv1alpha1.SealedSecret) (*corev1.Secret,
 func attemptUnseal(ss *ssv1alpha1.SealedSecret, keyRegistry *KeyRegistry) (*corev1.Secret, error) {
 	annotations := ss.GetObjectMeta().GetAnnotations()
 	encType := "cert"
-	encConfig := map[string]string{}
 	if annotations["encryption-type"] == "vault" {
 		encType = "vault"
-		encConfig["vault_addr"] = "http://vault.vault:8200"
-		encConfig["vault_token"] = "s.dfoyA0hqHEaHltpETrmwfn7k"
-		encConfig["vault_path"] = "iie"
 	}
 	privateKeys := map[string]*rsa.PrivateKey{}
 	for k, v := range keyRegistry.keys {
 		privateKeys[k] = v.private
 	}
-	return ss.Unseal(scheme.Codecs, encType, encConfig, privateKeys)
+	return ss.Unseal(scheme.Codecs, encType, privateKeys)
 }

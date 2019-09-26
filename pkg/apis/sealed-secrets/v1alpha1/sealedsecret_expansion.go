@@ -176,7 +176,7 @@ func StripLastAppliedAnnotations(annotations map[string]string) {
 // NewSealedSecret creates a new SealedSecret object wrapping the
 // provided secret. This encrypts only the values of each secrets
 // individually, so secrets can be updated one by one.
-func NewSealedSecret(codecs runtimeserializer.CodecFactory, cryptoType string, cryptoConfig map[string]string, pubKey *rsa.PublicKey, secret *v1.Secret) (*SealedSecret, error) {
+func NewSealedSecret(codecs runtimeserializer.CodecFactory, cryptoType string, pubKey *rsa.PublicKey, secret *v1.Secret) (*SealedSecret, error) {
 	if secret.GetNamespace() == "" {
 		return nil, fmt.Errorf("Secret must declare a namespace")
 	}
@@ -222,10 +222,6 @@ func NewSealedSecret(codecs runtimeserializer.CodecFactory, cryptoType string, c
 		cr = ts
 	case "vault":
 		ts := new(crypto.Vault)
-		ts.Address = cryptoConfig["vault_addr"]
-		ts.KeyName = "sealed-secrets"
-		ts.MountPath = cryptoConfig["vault_path"]
-		ts.Token = cryptoConfig["vault_token"]
 		cr = ts
 	default:
 		return nil, fmt.Errorf("unsupported encryption method: %s", cryptoType)
@@ -259,7 +255,7 @@ func NewSealedSecret(codecs runtimeserializer.CodecFactory, cryptoType string, c
 }
 
 // Unseal decrypts and returns the embedded v1.Secret.
-func (s *SealedSecret) Unseal(codecs runtimeserializer.CodecFactory, cryptoType string, cryptoConfig map[string]string, privKeys map[string]*rsa.PrivateKey) (*v1.Secret, error) {
+func (s *SealedSecret) Unseal(codecs runtimeserializer.CodecFactory, cryptoType string, privKeys map[string]*rsa.PrivateKey) (*v1.Secret, error) {
 	boolTrue := true
 	smeta := s.GetObjectMeta()
 
@@ -279,10 +275,6 @@ func (s *SealedSecret) Unseal(codecs runtimeserializer.CodecFactory, cryptoType 
 		cr = ts
 	case "vault":
 		ts := new(crypto.Vault)
-		ts.Address = cryptoConfig["vault_addr"]
-		ts.KeyName = "sealed-secrets"
-		ts.MountPath = cryptoConfig["vault_path"]
-		ts.Token = cryptoConfig["vault_token"]
 		cr = ts
 	default:
 		return nil, fmt.Errorf("unsupported encryption method: %s", cryptoType)

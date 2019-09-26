@@ -11,12 +11,18 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/bitnami-labs/sealed-secrets/pkg/vault"
 	"golang.org/x/crypto/ssh"
 )
 
 const (
 	sessionKeyBytes = 32
 )
+
+type Cryptor interface {
+	Encrypt(plaintext []byte) ([]byte, error)
+	Decrypt(encrypted []byte) ([]byte, error)
+}
 
 type Cert struct {
 	Cryptor
@@ -25,7 +31,24 @@ type Cert struct {
 	PrivateKeys map[string]*rsa.PrivateKey
 }
 
-type CertConfig struct {
+type Vault struct {
+	Cryptor
+}
+
+func (c Vault) Encrypt(d []byte) ([]byte, error) {
+	err := vault.CreateClient()
+	if err != nil {
+		return []byte{}, err
+	}
+	return vault.Encrypt(d)
+}
+
+func (c Vault) Decrypt(e []byte) ([]byte, error) {
+	err := vault.CreateClient()
+	if err != nil {
+		return []byte{}, err
+	}
+	return vault.Decrypt(e)
 }
 
 func (c Cert) Encrypt(d []byte) ([]byte, error) {
