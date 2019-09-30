@@ -1,0 +1,11 @@
+# Ideally we could use the "static" flavour but let's first start with the base flavour (which has glibc).
+FROM gcr.io/distroless/base@sha256:edc3643ddf96d75032a55e240900b68b335186f1e5fea0a95af3b4cc96020b77
+MAINTAINER Marko Mikulicic <mkmik@vmware.com>
+COPY controller /usr/local/bin/
+COPY . /tmp/sealed-secrets
+
+ADD tmp/_output/bin/dlv /usr/local/bin
+
+EXPOSE 40000 8080
+
+ENTRYPOINT ["/usr/local/bin/dlv", "--listen=:40000", "--headless=true", "--api-version=2", "exec", "/usr/local/bin/controller"]

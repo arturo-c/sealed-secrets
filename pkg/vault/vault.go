@@ -1,11 +1,17 @@
 package vault
 
 import (
+	"bytes"
 	"context"
+	"crypto/tls"
+	"encoding/json"
 	"errors"
+	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	log "github.com/hashicorp/go-hclog"
@@ -38,6 +44,7 @@ var (
 	vaultKubernetesRole = getEnv("VAULT_KUBERNETES_ROLE", "default")
 	vaultTransitKey     = getEnv("VAULT_TRANSIT_KEY", "sealed-secrets")
 	vaultTransitPath    = getEnv("VAULT_TRANSIT_PATH", "transit")
+	serviceAccountPath  = getEnv("SERVICE_ACCOUNT_PATH", "/var/run/secrets/kubernetes.io/serviceaccount/token")
 )
 
 // CreateClient creates a new Vault API client.
@@ -64,38 +71,50 @@ func CreateClient() error {
 	} else {
 		// Check the required mount path and role for the Kubernetes Auth
 		// Method. If one of the env variable is missing we return an error.
-		if vaultKubernetesPath == "" {
-			return ErrMissingVaultKubernetesPath
-		}
+		// if vaultKubernetesPath == "" {
+		// return ErrMissingVaultKubernetesPath
+		// }
 
-		if vaultKubernetesRole == "" {
-			return ErrMissingVaultKubernetesRole
-		}
+		// if vaultKubernetesRole == "" {
+		// return ErrMissingVaultKubernetesRole
+		// }
 
 		// Read the service account token value and create a map for the
 		// authentication against Vault.
-		kubeToken, err := ioutil.ReadFile("/var/run/secrets/kubernetes.io/serviceaccount/token")
-		if err != nil {
-			return err
-		}
+		// kubeToken, err := ioutil.ReadFile("/var/run/secrets/kubernetes.io/serviceaccount/token")
+		// if err != nil {
+		// return err
+		// }
 
-		data := make(map[string]interface{})
-		data["jwt"] = string(kubeToken)
-		data["role"] = vaultKubernetesRole
+		// data := make(map[string]interface{})
+		// data["jwt"] = string(kubeToken)
+		// data["role"] = vaultKubernetesRole
 
 		// Authenticate against vault using the Kubernetes Auth Method and set
 		// the token which the client should use for further interactions with
 		// Vault. We also set the lease duration of the token for the renew
 		// function.
-		secret, err := client.Logical().Write(vaultKubernetesPath+"/login", data)
+		// secret, err := client.Logical().Write(vaultKubernetesPath+"/login", data)
+		// if err != nil {
+		// return err
+		// } else if secret.Auth == nil {
+		// return ErrMissingVaultAuthInfo
+		// }
+
+		// tokenLeaseDuration = secret.Auth.LeaseDuration
+
+		// Read the JWT token from disk
+		jwt, err := readJwtToken(serviceAccountPath)
 		if err != nil {
 			return err
-		} else if secret.Auth == nil {
-			return ErrMissingVaultAuthInfo
 		}
 
-		tokenLeaseDuration = secret.Auth.LeaseDuration
-		client.SetToken(secret.Auth.ClientToken)
+		// Authenticate to vault using the jwt token
+		vaultToken, tokenLeaseDuration, err = authenticate(vaultKubernetesRole, jwt)
+		if err != nil {
+			return err
+		}
+		client.SetToken(vaultToken)
 	}
 
 	return nil
@@ -116,6 +135,7 @@ func RenewToken() {
 	}
 }
 
+// Encrypt uses vault transit engine
 func Encrypt(d []byte) ([]byte, error) {
 	s := transit.NewSeal(logger)
 	config := map[string]string{
@@ -133,6 +153,7 @@ func Encrypt(d []byte) ([]byte, error) {
 	return swi.GetCiphertext(), nil
 }
 
+// Decrypt uses vault transit engine
 func Decrypt(e []byte) ([]byte, error) {
 	s := transit.NewSeal(logger)
 	config := map[string]string{
@@ -166,4 +187,67 @@ func getEnv(key, fallback string) string {
 		return value
 	}
 	return fallback
+}
+
+func readJwtToken(path string) (string, error) {
+	data, err := ioutil.ReadFile(path)
+	if err != nil {
+		return "", fmt.Errorf("failed to read jwt token: %s", err.Error())
+	}
+
+	return string(bytes.TrimSpace(data)), nil
+}
+
+func authenticate(role, jwt string) (string, int, error) {
+	tlsClientConfig := &tls.Config{
+		MinVersion:         tls.VersionTLS12,
+		InsecureSkipVerify: true,
+	}
+
+	transport := &http.Transport{
+		TLSClientConfig: tlsClientConfig,
+	}
+
+	client := &http.Client{
+		Transport: transport,
+	}
+
+	transport.Proxy = http.ProxyFromEnvironment
+
+	addr := vaultAddress + "/v1/auth/" + vaultKubernetesPath + "/login"
+	body := fmt.Sprintf(`{"role": "%s", "jwt": "%s"}`, role, jwt)
+
+	req, err := http.NewRequest(http.MethodPost, addr, strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	if err != nil {
+		return "", 0, fmt.Errorf("failed to send request: %s", err.Error())
+	}
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return "", 0, fmt.Errorf("failed to login: %s", err.Error())
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != 200 {
+		var b bytes.Buffer
+		if _, err := io.Copy(&b, resp.Body); err != nil {
+			logger.Info("failed to copy response body: %s", err)
+		}
+		return "", 0, fmt.Errorf("failed to get successful response: %#v, %s",
+			resp, b.String())
+	}
+
+	var s struct {
+		Auth struct {
+			ClientToken        string `json:"client_token"`
+			TokenLeaseDuration int    `json:"lease_duration"`
+		} `json:"auth"`
+	}
+
+	if err := json.NewDecoder(resp.Body).Decode(&s); err != nil {
+		return "", 0, fmt.Errorf("failed to decode message: %s", err.Error())
+	}
+
+	return s.Auth.ClientToken, s.Auth.TokenLeaseDuration, nil
 }

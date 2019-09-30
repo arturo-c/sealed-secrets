@@ -1,0 +1,12 @@
+FROM golang
+ 
+ENV GOPATH /opt/go:$GOPATH
+ENV PATH /opt/go/bin:$PATH
+RUN go get github.com/go-delve/delve/cmd/dlv
+ADD . /opt/go/src/local/bitnami-labs/sealed-secrets
+WORKDIR /opt/go/src/local/bitnami-labs/sealed-secrets
+RUN go build -o controller -gcflags "-N -l" -mod=vendor ./cmd/controller
+ 
+ 
+EXPOSE 40000 8080
+CMD ["./controller"]

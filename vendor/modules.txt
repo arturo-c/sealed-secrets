@@ -114,15 +114,15 @@ github.com/hashicorp/vault/api
 # github.com/hashicorp/vault/sdk v0.1.14-0.20190909201848-e0fbf9b652e2
 github.com/hashicorp/vault/sdk/helper/logging
 github.com/hashicorp/vault/sdk/physical
-github.com/hashicorp/vault/sdk/helper/locksutil
-github.com/hashicorp/vault/sdk/helper/pathmanager
 github.com/hashicorp/vault/sdk/helper/consts
 github.com/hashicorp/vault/sdk/helper/hclutil
 github.com/hashicorp/vault/sdk/helper/jsonutil
 github.com/hashicorp/vault/sdk/helper/parseutil
-github.com/hashicorp/vault/sdk/helper/cryptoutil
+github.com/hashicorp/vault/sdk/helper/locksutil
+github.com/hashicorp/vault/sdk/helper/pathmanager
 github.com/hashicorp/vault/sdk/helper/compressutil
 github.com/hashicorp/vault/sdk/helper/strutil
+github.com/hashicorp/vault/sdk/helper/cryptoutil
 # github.com/hpcloud/tail v1.0.0
 github.com/hpcloud/tail
 github.com/hpcloud/tail/ratelimiter
@@ -211,8 +211,8 @@ golang.org/x/crypto/internal/chacha20
 golang.org/x/crypto/poly1305
 golang.org/x/crypto/ed25519/internal/edwards25519
 golang.org/x/crypto/internal/subtle
-golang.org/x/crypto/blake2b
 golang.org/x/crypto/pbkdf2
+golang.org/x/crypto/blake2b
 # golang.org/x/net v0.0.0-20190813141303-74dc4d7220e7
 golang.org/x/net/http2
 golang.org/x/net/http/httpguts
